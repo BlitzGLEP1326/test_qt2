@@ -1,2 +1,2 @@
 # test_qt2
-test prof on qt proj
+test perf on qt proj, opensuse 42.2
