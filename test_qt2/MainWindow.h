@@ -29,7 +29,11 @@ private slots:
 private:
 	Ui::MainWindow *ui;
 
-	void genRSA(RSA& rsa, EVP_PKEY& privateKey, int kSize);
+	int genRSA(RSA** rsa, EVP_PKEY** privateKey, int kSize);
+	void freePrivateKey();
+
+	RSA* fRsa = nullptr;
+	EVP_PKEY* privateKey = nullptr;
 };
 
 #endif // MAINWINDOW_H

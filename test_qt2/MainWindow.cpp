@@ -3,39 +3,58 @@
 #include <QDebug>
 #include <unistd.h>
 #include <QDateTime>
+#include <QTextStream>
 
-#define DLOGPFL qDebug() << QDateTime::currentDateTime().toString() << __LINE__;
+static QTextStream ts{stderr};
+#define DLOGPFL ts << QDateTime::currentDateTime().toString() << __LINE__ << "\n"; ts.flush();
 
-void MainWindow::genRSA(RSA &rsa, EVP_PKEY &privateKey, int kSize)
+int MainWindow::genRSA(RSA** rsa, EVP_PKEY** privateKey, int kSize)
 {
-	RSA* KeyPair = nullptr;
+	RSA* Rsa = nullptr;
 	BIGNUM* BigNumber = nullptr;
 	EVP_PKEY* PrivateKey = nullptr;
+	int res = -1;
 
 	do {
 
-		KeyPair = RSA_new();
-		if (!KeyPair) {DLOGPFL; break;};
+		Rsa = RSA_new();
+		if (!Rsa) {DLOGPFL; break;};
+		res = -2; // Rsa not in PrivateKey
 
 		BigNumber = BN_new();
 		if (!BigNumber) {DLOGPFL; break;};
 
 		if (!BN_set_word (BigNumber, 65537)) {DLOGPFL; break;};
 
-		if (!RSA_generate_key_ex (KeyPair, kSize, BigNumber, NULL)) {DLOGPFL; break;};
+		if (!RSA_generate_key_ex (Rsa, kSize, BigNumber, NULL)) {DLOGPFL; break;};
 
 		PrivateKey = EVP_PKEY_new();
 		if (!PrivateKey) {DLOGPFL; break;};
+		res = -3;
 
-		if (!EVP_PKEY_assign_RSA (PrivateKey, KeyPair)) {DLOGPFL; break;};
+		if (!EVP_PKEY_assign_RSA (PrivateKey, Rsa)) {DLOGPFL; break;}; // Rsa in PrivateKey
+		res = 0;
 
 	} while(0);
 
-	if (KeyPair) rsa = *KeyPair;
-	if (PrivateKey) privateKey = *PrivateKey;
-
 	if (BigNumber) BN_free(BigNumber);
-	if (PrivateKey) { EVP_PKEY_free (PrivateKey); }
+
+	if (!res) {
+		*rsa = Rsa;
+		*privateKey = PrivateKey;
+	} else {
+		if (PrivateKey) { DLOGPFL; EVP_PKEY_free(PrivateKey); }
+		if (Rsa && res == -2) { DLOGPFL; RSA_free(Rsa); }
+		*rsa = nullptr;
+		*privateKey = nullptr;
+	}
+
+	return res;
+}
+
+void MainWindow::freePrivateKey()
+{
+	if (privateKey) EVP_PKEY_free(privateKey);
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -48,14 +67,16 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+	freePrivateKey();
 	delete ui;
 }
 
 void MainWindow::on_pushButton_clicked()
 {
 	DLOGPFL
-	for (int i = 0; i != 200; ++i) {
-		RSA rsaCached; EVP_PKEY pkeyCached; genRSA(rsaCached, pkeyCached, 1000);
+	for (int i = 0; i != 20; ++i) {
+		freePrivateKey();
+		genRSA(&fRsa, &privateKey, 1000);
 	}
 	DLOGPFL
 }
@@ -63,6 +84,7 @@ void MainWindow::on_pushButton_clicked()
 void MainWindow::on_pushButton_2_clicked()
 {
 	DLOGPFL
-	RSA rsaCached; EVP_PKEY pkeyCached; genRSA(rsaCached, pkeyCached, 5500);
+	freePrivateKey();
+	genRSA(&fRsa, &privateKey, 1000);
 	DLOGPFL
 }
